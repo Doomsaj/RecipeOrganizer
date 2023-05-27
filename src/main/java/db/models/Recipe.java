@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class Recipe implements Model {
@@ -406,6 +407,32 @@ public class Recipe implements Model {
     }
 
     /**
+     * find an recipe in database based on given name
+     * @param name name of recipe
+     * @return Recipe
+     */
+    public static Recipe findByName(String name) {
+        Recipe recipe = null;
+        try {
+            Statement statement = DBConnection.getStatment();
+            String getRecipeSQL = "select * from " + table + " where name='%s'";
+            ResultSet recipeResult = statement.executeQuery(String.format(getRecipeSQL, name));
+            while (recipeResult.next()) {
+                int id = recipeResult.getInt("id");
+                String instructions = recipeResult.getString("instructions");
+                ArrayList<Category> categories = getRecipeCategories(id);
+                ArrayList<Ingredient> ingredients = getRecipeIngredients(id);
+                recipe = new Recipe(id, name, instructions, categories, ingredients);
+            }
+            recipeResult.close();
+            statement.close();
+        } catch (SQLException e) {
+            System.err.println(e.getMessage());
+        }
+        return recipe;
+    }
+
+    /**
      * check if an recipe is exists
      *
      * @param recipeId recipe id
@@ -458,7 +485,7 @@ public class Recipe implements Model {
      * @param recipeId id of recipe
      * @return ArrayList of Category objects
      */
-    private static ArrayList<Category> getRecipeCategories(int recipeId) {
+    public static ArrayList<Category> getRecipeCategories(int recipeId) {
         ArrayList<Category> categories = new ArrayList<>();
         try {
             Statement statement = DBConnection.getStatment();
@@ -497,7 +524,7 @@ public class Recipe implements Model {
      * @param recipeId id of recipe
      * @return ArrayList of Ingredient objects
      */
-    private static ArrayList<Ingredient> getRecipeIngredients(int recipeId) {
+    public static ArrayList<Ingredient> getRecipeIngredients(int recipeId) {
         ArrayList<Ingredient> ingredients = new ArrayList<>();
         try {
             Statement statement = DBConnection.getStatment();
@@ -537,5 +564,18 @@ public class Recipe implements Model {
             System.err.println(e.getMessage());
         }
         return count;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Recipe recipe = (Recipe) o;
+        return id == recipe.id || Objects.equals(name, recipe.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, name);
     }
 }
