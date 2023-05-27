@@ -2,9 +2,9 @@ package db.models;
 
 import db.DBConnection;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Objects;
 
@@ -18,6 +18,10 @@ public class Ingredient implements Model {
         this.name = name;
     }
 
+    public Ingredient(String name) {
+        this.name = name;
+    }
+
     public int getId() {
         return id;
     }
@@ -26,12 +30,28 @@ public class Ingredient implements Model {
         return name;
     }
 
+    private void setId(int id) {
+        this.id = id;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
     @Override
     public void save() {
         try {
-            Statement statement = DBConnection.getStatment();
-            String createSQL = "insert into " + table + " (name) values(%s);";
-            statement.execute(String.format(createSQL, getName()));
+            String createSQL = "insert into " + table + " (name) values(?);";
+            PreparedStatement statement = DBConnection.prepareStatment(createSQL);
+            statement.setString(1, getName());
+            int affectedRows = statement.executeUpdate();
+            if (affectedRows > 0) {
+                ResultSet generatedKeys = statement.getGeneratedKeys();
+                if (generatedKeys.next()) {
+                    int lastInsertedId = generatedKeys.getInt(1);
+                    setId(lastInsertedId);
+                }
+            }
             statement.close();
         } catch (SQLException e) {
             System.err.println(e.getMessage());
@@ -46,11 +66,30 @@ public class Ingredient implements Model {
     public static Ingredient find(int id) {
         Ingredient ingredient = null;
         try {
-            Statement statement = DBConnection.getStatment();
-            String getIngredientSQL = "select * from " + table + " where id=" + id;
-            ResultSet ingredientResult = statement.executeQuery(getIngredientSQL);
+            String getIngredientSQL = "select * from " + table + " where id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(getIngredientSQL);
+            statement.setInt(1, id);
+            ResultSet ingredientResult = statement.executeQuery();
             while (ingredientResult.next()) {
                 String name = ingredientResult.getString("name");
+                ingredient = new Ingredient(id, name);
+            }
+            ingredientResult.close();
+            statement.close();
+        } catch (SQLException e) {
+            System.err.println(e.getMessage());
+        }
+        return ingredient;
+    }
+    public static Ingredient find(String name) {
+        Ingredient ingredient = null;
+        try {
+            String getIngredientSQL = "select * from " + table + " where name=?";
+            PreparedStatement statement = DBConnection.prepareStatment(getIngredientSQL);
+            statement.setString(1, name);
+            ResultSet ingredientResult = statement.executeQuery();
+            while (ingredientResult.next()) {
+                int id = ingredientResult.getInt("id");
                 ingredient = new Ingredient(id, name);
             }
             ingredientResult.close();
@@ -70,15 +109,21 @@ public class Ingredient implements Model {
         return find(id) != null;
     }
 
+    public static boolean exists(String name) {
+        return find(name) != null;
+    }
+
     /**
      * update the ingredient in database
      */
     @Override
     public void update() {
         try {
-            Statement statement = DBConnection.getStatment();
-            String updateSQL = "update " + table + " set name='%s' where id=" + id;
-            statement.execute(String.format(updateSQL, getName()));
+            String updateSQL = "update " + table + " set name=? where id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(updateSQL);
+            statement.setString(1, getName());
+            statement.setInt(2, getId());
+            statement.executeUpdate();
             statement.close();
         } catch (SQLException e) {
             System.err.println(e.getMessage());
@@ -105,9 +150,9 @@ public class Ingredient implements Model {
     public static ArrayList<Ingredient> all() {
         ArrayList<Ingredient> ingredients = new ArrayList<>();
         try {
-            Statement statement = DBConnection.getStatment();
             String getSQL = "select * from " + table;
-            ResultSet resultSet = statement.executeQuery(getSQL);
+            PreparedStatement statement = DBConnection.prepareStatment(getSQL);
+            ResultSet resultSet = statement.executeQuery();
             while (resultSet.next()) {
                 int id = resultSet.getInt("id");
                 String name = resultSet.getString("name");
@@ -129,10 +174,11 @@ public class Ingredient implements Model {
     public static ArrayList<Recipe> getIngredientRecipes(int ...ingredientId) {
         ArrayList<Recipe> recipes = new ArrayList<>();
         try {
-            Statement statement = DBConnection.getStatment();
+            String getRecipesIdsSQL = "select recipe_id from recipes_ingredients where ingredient_id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(getRecipesIdsSQL);
             for (int i : ingredientId) {
-                String getRecipesIdsSQL = "select recipe_id from recipes_ingredients where ingredient_id=" + i;
-                ResultSet recipesIdsResult = statement.executeQuery(getRecipesIdsSQL);
+                statement.setInt(1, i);
+                ResultSet recipesIdsResult = statement.executeQuery();
                 while (recipesIdsResult.next()) {
                     int recipeId = recipesIdsResult.getInt("recipe_id");
                     recipes.add(Recipe.find(recipeId));
@@ -153,9 +199,9 @@ public class Ingredient implements Model {
     public static int count() {
         int count = 0;
         try {
-            Statement statement = DBConnection.getStatment();
             String countSQL = "select count(id) from " + table;
-            ResultSet resultSet = statement.executeQuery(countSQL);
+            PreparedStatement statement = DBConnection.prepareStatment(countSQL);
+            ResultSet resultSet = statement.executeQuery();
             resultSet.next();
             count = resultSet.getInt(1);
         } catch (SQLException e) {

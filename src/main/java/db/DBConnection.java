@@ -1,11 +1,7 @@
 package db;
 
-import db.models.Category;
-import db.models.Ingredient;
-import db.models.Recipe;
 
 import java.sql.*;
-import java.util.ArrayList;
 
 public abstract class DBConnection {
     private static Connection connection;
@@ -33,6 +29,10 @@ public abstract class DBConnection {
         } catch (SQLException e) {
             System.err.println(e.getMessage());
         }
+    }
+
+    public static PreparedStatement prepareStatment(String SQL) throws SQLException {
+        return connection.prepareStatement(SQL, Statement.RETURN_GENERATED_KEYS);
     }
 
     public static Statement getStatment() throws SQLException {
@@ -66,11 +66,11 @@ public abstract class DBConnection {
      */
     private static void truncateTablesData() {
         String[] SQLs = {
-                "truncate table if exists categories;",
-                "turncate table if exists recipes;",
-                "truncate table if exists ingredients;",
-                "truncate table if exists recipes_ingredients;",
-                "turncate table if exists recipes_categories;"
+                "drop table if exists categories;",
+                "drop table if exists recipes;",
+                "drop table if exists ingredients;",
+                "drop table if exists recipes_ingredients;",
+                "drop table if exists recipes_categories;"
         };
         try {
             Statement statement = connection.createStatement();
@@ -88,5 +88,6 @@ public abstract class DBConnection {
      */
     public static void purgeAllData() {
         truncateTablesData();
+        createTablesIfNotExist();
     }
 }

@@ -2,6 +2,7 @@ package db.models;
 
 import db.DBConnection;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -19,6 +20,13 @@ public class Recipe implements Model {
 
     public Recipe(int id, String name, String instructions, ArrayList<Category> categories, ArrayList<Ingredient> ingredients) {
         this.id = id;
+        this.name = name;
+        this.instructions = instructions;
+        this.categories = categories;
+        this.ingredients = ingredients;
+    }
+
+    public Recipe(String name, String instructions, ArrayList<Category> categories, ArrayList<Ingredient> ingredients) {
         this.name = name;
         this.instructions = instructions;
         this.categories = categories;
@@ -142,15 +150,28 @@ public class Recipe implements Model {
         ingredients.remove(ingredient);
     }
 
+    private void setId(int id) {
+        this.id = id;
+    }
+
     /**
      * save new recipe in database
      */
     @Override
     public void save() {
         try {
-            Statement statement = DBConnection.getStatment();
-            String createNewRecipeSQL = String.format("insert into " + table + " (name,instructions) values(%s,%s)", getName(), getInstructions());
-            statement.execute(createNewRecipeSQL); // create new recipe
+            String createNewRecipeSQL = "insert into " + table + " (name,instructions) values(?,?)";
+            PreparedStatement statement = DBConnection.prepareStatment(createNewRecipeSQL);
+            statement.setString(1, getName());
+            statement.setString(2, getInstructions());
+            int affectedRows = statement.executeUpdate(); // create new recipe
+            if (affectedRows > 0) {
+                ResultSet generatedKeys = statement.getGeneratedKeys();
+                if (generatedKeys.next()) {
+                    int lastInsertedId = generatedKeys.getInt(1);
+                    setId(lastInsertedId);
+                }
+            }
             statement.close();
             linkCategories(); // link categories for recipe
             linkIngredients(); // link ingredients for recipe
@@ -165,9 +186,12 @@ public class Recipe implements Model {
     @Override
     public void update() {
         try {
-            Statement statement = DBConnection.getStatment();
-            String updateSQL = "update " + table + "set name='%s', instructions='%s' where id=%s";
-            statement.executeUpdate(String.format(updateSQL, getName(), getInstructions(), getId())); // update recipe row in recipes table
+            String updateSQL = "update " + table + "set name=?, instructions=? where id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(updateSQL);
+            statement.setString(1, getName());
+            statement.setString(2, getInstructions());
+            statement.setInt(3, getId());
+            statement.executeUpdate(); // update recipe row in recipes table
             statement.close();
 
             updateCategories(); // update categories
@@ -183,9 +207,10 @@ public class Recipe implements Model {
     @Override
     public void delete() {
         try {
-            Statement statement = DBConnection.getStatment();
-            String deleteSQL = "delete from " + table + " where id=" + getId();
-            statement.execute(deleteSQL); //delete recipe row from recipes table
+            String deleteSQL = "delete from " + table + " where id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(deleteSQL);
+            statement.setInt(1, getId());
+            statement.executeUpdate(); //delete recipe row from recipes table
             statement.close();
 
             unlinkCategories(); // unlink all categories
@@ -216,14 +241,18 @@ public class Recipe implements Model {
      */
     private void linkCategories() {
         try {
-            Statement statement = DBConnection.getStatment();
+            String linkRecipeCategorySQL = "insert into recipes_categories (recipe_id,category_id) values(?,?);";
+            PreparedStatement statement = DBConnection.prepareStatment(linkRecipeCategorySQL);
+            statement.setInt(1, getId());
             for (Category category : categories) {
 
-                if (!Category.exists(category.getId()))
+                if (!Category.exists(category.getName()))
                     category.save();
+                else
+                    category = Category.find(category.getName());
 
-                String linkRecipeCategorySQL = "insert into recipes_categories (recipe_id,category_id) values(%s,%s);";
-                statement.execute(String.format(linkRecipeCategorySQL, getId(), category.getId()));
+                statement.setInt(2, category.getId());
+                statement.executeUpdate();
             }
             statement.close(); //close statment
         } catch (SQLException e) {
@@ -238,14 +267,18 @@ public class Recipe implements Model {
      */
     private void linkCategories(ArrayList<Category> categories) {
         try {
-            Statement statement = DBConnection.getStatment();
+            String linkRecipeCategorySQL = "insert into recipes_categories (recipe_id,category_id) values(?,?);";
+            PreparedStatement statement = DBConnection.prepareStatment(linkRecipeCategorySQL);
+            statement.setInt(1, getId());
             for (Category category : categories) {
 
-                if (!Category.exists(category.getId()))
+                if (!Category.exists(category.getName()))
                     category.save();
+                else
+                    category = Category.find(category.getName());
 
-                String linkRecipeCategorySQL = "insert into recipes_categories (recipe_id,category_id) values(%s,%s);";
-                statement.execute(String.format(linkRecipeCategorySQL, getId(), category.getId()));
+                statement.setInt(2, category.getId());
+                statement.executeUpdate();
             }
             statement.close(); //close statment
         } catch (SQLException e) {
@@ -260,10 +293,12 @@ public class Recipe implements Model {
      */
     private void unlinkCategories(ArrayList<Category> categories) {
         try {
-            Statement statement = DBConnection.getStatment();
+            String unlinkCategorySQL = "delete from recipe_categories where recipe_id=? and category_id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(unlinkCategorySQL);
+            statement.setInt(1, getId());
             for (Category category : categories) {
-                String unlinkCategorySQL = "delete from recipe_categories where recipe_id=%s and category_id=%s";
-                statement.execute(String.format(unlinkCategorySQL, getId(), category.getId()));
+                statement.setInt(2, category.getId());
+                statement.executeUpdate();
             }
             statement.close();
         } catch (SQLException e) {
@@ -276,10 +311,12 @@ public class Recipe implements Model {
      */
     private void unlinkCategories() {
         try {
-            Statement statement = DBConnection.getStatment();
+            String unlinkCategorySQL = "delete from recipe_categories where recipe_id=? and category_id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(unlinkCategorySQL);
+            statement.setInt(1, getId());
             for (Category category : categories) {
-                String unlinkCategorySQL = "delete from recipe_categories where recipe_id=%s and category_id=%s";
-                statement.execute(String.format(unlinkCategorySQL, getId(), category.getId()));
+                statement.setInt(2, category.getId());
+                statement.executeUpdate();
             }
             statement.close();
         } catch (SQLException e) {
@@ -308,14 +345,18 @@ public class Recipe implements Model {
      */
     private void linkIngredients() {
         try {
-            Statement statement = DBConnection.getStatment();
+            String linkRecipeIngredientSQL = "insert into recipes_ingredients (recipe_id,ingredient_id) values(?,?);";
+            PreparedStatement statement = DBConnection.prepareStatment(linkRecipeIngredientSQL);
+            statement.setInt(1, getId());
             for (Ingredient ingredient : ingredients) {
 
-                if (!Ingredient.exists(ingredient.getId()))
+                if (!Ingredient.exists(ingredient.getName()))
                     ingredient.save();
+                else
+                    ingredient = Ingredient.find(ingredient.getName());
 
-                String linkRecipeIngredientSQL = "insert into recipes_ingredients (recipe_id,ingredient_id) values(%s,%s);";
-                statement.execute(String.format(linkRecipeIngredientSQL, getId(), ingredient.getId()));
+                statement.setInt(2, ingredient.getId());
+                statement.executeUpdate();
             }
             statement.close(); //close statment
         } catch (SQLException e) {
@@ -330,14 +371,18 @@ public class Recipe implements Model {
      */
     private void linkIngredients(ArrayList<Ingredient> ingredients) {
         try {
-            Statement statement = DBConnection.getStatment();
+            String linkRecipeIngredientSQL = "insert into recipes_ingredients (recipe_id,ingredient_id) values(?,?);";
+            PreparedStatement statement = DBConnection.prepareStatment(linkRecipeIngredientSQL);
+            statement.setInt(1, getId());
             for (Ingredient ingredient : ingredients) {
 
-                if (!Ingredient.exists(ingredient.getId()))
+                if (!Ingredient.exists(ingredient.getName()))
                     ingredient.save();
+                else
+                    ingredient = Ingredient.find(ingredient.getName());
 
-                String linkRecipeIngredientSQL = "insert into recipes_ingredients (recipe_id,ingredient_id) values(%s,%s);";
-                statement.execute(String.format(linkRecipeIngredientSQL, getId(), ingredient.getId()));
+                statement.setInt(2, ingredient.getId());
+                statement.executeUpdate();
             }
             statement.close(); //close statment
         } catch (SQLException e) {
@@ -352,10 +397,12 @@ public class Recipe implements Model {
      */
     private void unlinkIngredients(ArrayList<Ingredient> ingredients) {
         try {
-            Statement statement = DBConnection.getStatment();
+            String unlinkCategorySQL = "delete from recipe_ingredients where recipe_id=? and ingredient_id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(unlinkCategorySQL);
+            statement.setInt(1, getId());
             for (Ingredient ingredient : ingredients) {
-                String unlinkCategorySQL = "delete from recipe_ingredients where recipe_id=%s and ingredient_id=%s";
-                statement.execute(String.format(unlinkCategorySQL, getId(), ingredient.getId()));
+                statement.setInt(2, ingredient.getId());
+                statement.executeUpdate();
             }
             statement.close();
         } catch (SQLException e) {
@@ -368,10 +415,12 @@ public class Recipe implements Model {
      */
     private void unlinkIngredients() {
         try {
-            Statement statement = DBConnection.getStatment();
+            String unlinkCategorySQL = "delete from recipe_ingredients where recipe_id=? and ingredient_id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(unlinkCategorySQL);
+            statement.setInt(1, getId());
             for (Ingredient ingredient : ingredients) {
-                String unlinkCategorySQL = "delete from recipe_ingredients where recipe_id=%s and ingredient_id=%s";
-                statement.execute(String.format(unlinkCategorySQL, getId(), ingredient.getId()));
+                statement.setInt(2, ingredient.getId());
+                statement.executeUpdate();
             }
             statement.close();
         } catch (SQLException e) {
@@ -388,9 +437,10 @@ public class Recipe implements Model {
     public static Recipe find(int id) {
         Recipe recipe = null;
         try {
-            Statement statement = DBConnection.getStatment();
-            String getRecipeSQL = "select * from " + table + " where id=" + id;
-            ResultSet recipeResult = statement.executeQuery(getRecipeSQL);
+            String getRecipeSQL = "select * from " + table + " where id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(getRecipeSQL);
+            statement.setInt(1, id);
+            ResultSet recipeResult = statement.executeQuery();
             while (recipeResult.next()) {
                 String name = recipeResult.getString("name");
                 String instructions = recipeResult.getString("instructions");
@@ -411,12 +461,13 @@ public class Recipe implements Model {
      * @param name name of recipe
      * @return Recipe
      */
-    public static Recipe findByName(String name) {
+    public static Recipe find(String name) {
         Recipe recipe = null;
         try {
-            Statement statement = DBConnection.getStatment();
-            String getRecipeSQL = "select * from " + table + " where name='%s'";
-            ResultSet recipeResult = statement.executeQuery(String.format(getRecipeSQL, name));
+            String getRecipeSQL = "select * from " + table + " where name=?";
+            PreparedStatement statement = DBConnection.prepareStatment(getRecipeSQL);
+            statement.setString(1, name);
+            ResultSet recipeResult = statement.executeQuery();
             while (recipeResult.next()) {
                 int id = recipeResult.getInt("id");
                 String instructions = recipeResult.getString("instructions");
@@ -439,8 +490,11 @@ public class Recipe implements Model {
      * @return true if recipe is exists or false if its not
      */
     public static boolean exists(int recipeId) {
-        Recipe recipe = find(recipeId);
-        return recipe != null;
+        return find(recipeId) != null;
+    }
+
+    public static boolean exists(String name) {
+        return find(name) != null;
     }
 
     /**
@@ -451,9 +505,9 @@ public class Recipe implements Model {
     public static ArrayList<Recipe> all() {
         ArrayList<Recipe> allData = new ArrayList<>();
         try {
-            Statement statement = DBConnection.getStatment();
             String SQL = "select * from " + table;
-            ResultSet result = statement.executeQuery(SQL);
+            PreparedStatement statement = DBConnection.prepareStatment(SQL);
+            ResultSet result = statement.executeQuery();
             while (result.next()) {
                 int id = result.getInt("id");
                 String name = result.getString("name");
@@ -488,13 +542,15 @@ public class Recipe implements Model {
     public static ArrayList<Category> getRecipeCategories(int recipeId) {
         ArrayList<Category> categories = new ArrayList<>();
         try {
-            Statement statement = DBConnection.getStatment();
-            String getCategoriesIdsSQL = "select category_id from recipes_categories where recipe_id=" + recipeId;
-            ResultSet categoriesIds = statement.executeQuery(getCategoriesIdsSQL); // get ids of all categories that recipe have
+            String getCategoriesIdsSQL = "select category_id from recipes_categories where recipe_id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(getCategoriesIdsSQL);
+            statement.setInt(1, recipeId);
+            ResultSet categoriesIds = statement.executeQuery(); // get ids of all categories that recipe have
             while (categoriesIds.next()) { // loop in selected category ids
                 int categoryId = categoriesIds.getInt("category_id");
                 String getCategoriesNameSQL = "select name from categories where id=" + categoryId;
-                ResultSet categoriesNames = statement.executeQuery(getCategoriesNameSQL); // get names of all categories that recipe have
+                Statement categoryNameStatement = DBConnection.getStatment();
+                ResultSet categoriesNames = categoryNameStatement.executeQuery(getCategoriesNameSQL); // get names of all categories that recipe have
                 while (categoriesNames.next()) { // loop in selected category name
                     String categoryName = categoriesNames.getString("name");
                     categories.add(new Category(categoryId, categoryName)); //create and add new category object to categories ArrayList
@@ -527,13 +583,15 @@ public class Recipe implements Model {
     public static ArrayList<Ingredient> getRecipeIngredients(int recipeId) {
         ArrayList<Ingredient> ingredients = new ArrayList<>();
         try {
-            Statement statement = DBConnection.getStatment();
-            String getIngredientsIdsSQL = "select ingredient_id from recipes_ingredients where recipe_id=" + recipeId;
-            ResultSet ingredientsIds = statement.executeQuery(getIngredientsIdsSQL); // get ids of all ingredients that recipe have
+            String getIngredientsIdsSQL = "select ingredient_id from recipes_ingredients where recipe_id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(getIngredientsIdsSQL);
+            statement.setInt(1, recipeId);
+            ResultSet ingredientsIds = statement.executeQuery(); // get ids of all ingredients that recipe have
             while (ingredientsIds.next()) { // loop in selected ingredients ids
                 int ingredientId = ingredientsIds.getInt("ingredient_id");
                 String getIngredientsNameSQL = "select name from ingredients where id=" + ingredientId;
-                ResultSet ingredientsNames = statement.executeQuery(getIngredientsNameSQL); // get names of all ingredients that recipe have
+                Statement ingredientNameStatment = DBConnection.getStatment();
+                ResultSet ingredientsNames = ingredientNameStatment.executeQuery(getIngredientsNameSQL); // get names of all ingredients that recipe have
                 while (ingredientsNames.next()) { // loop in selected ingredient name
                     String ingredientName = ingredientsNames.getString("name");
                     ingredients.add(new Ingredient(ingredientId, ingredientName)); //create and add new ingredients object to categories ArrayList
@@ -555,9 +613,9 @@ public class Recipe implements Model {
     public static int count() {
         int count = 0;
         try {
-            Statement statement = DBConnection.getStatment();
             String countSQL = "select count(id) from " + table;
-            ResultSet resultSet = statement.executeQuery(countSQL);
+            PreparedStatement statement = DBConnection.prepareStatment(countSQL);
+            ResultSet resultSet = statement.executeQuery();
             resultSet.next();
             count = resultSet.getInt(1);
         } catch (SQLException e) {

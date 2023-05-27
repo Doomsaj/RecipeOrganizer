@@ -2,9 +2,9 @@ package db.models;
 
 import db.DBConnection;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Objects;
 
@@ -15,6 +15,10 @@ public class Category implements Model {
 
     public Category(int id, String name) {
         this.id = id;
+        this.name = name;
+    }
+
+    public Category(String name) {
         this.name = name;
     }
 
@@ -30,7 +34,7 @@ public class Category implements Model {
         return id;
     }
 
-    public void setId(int id) {
+    private void setId(int id) {
         this.id = id;
     }
 
@@ -40,9 +44,17 @@ public class Category implements Model {
     @Override
     public void save() {
         try {
-            Statement statement = DBConnection.getStatment();
-            String createSQL = "insert into " + table + " (name) values(%s);";
-            statement.execute(String.format(createSQL, getName()));
+            String createSQL = "insert into " + table + " (name) values(?);";
+            PreparedStatement statement = DBConnection.prepareStatment(createSQL);
+            statement.setString(1, getName());
+            int affectedRows = statement.executeUpdate();
+            if (affectedRows > 0) {
+                ResultSet generatedKeys = statement.getGeneratedKeys();
+                if (generatedKeys.next()) {
+                    int lastInsertedId = generatedKeys.getInt(1);
+                    setId(lastInsertedId);
+                }
+            }
             statement.close();
         } catch (SQLException e) {
             System.err.println(e.getMessage());
@@ -55,9 +67,11 @@ public class Category implements Model {
     @Override
     public void update() {
         try {
-            Statement statement = DBConnection.getStatment();
-            String updateSQL = "update " + table + " set name='%s' where id=" + id;
-            statement.execute(String.format(updateSQL, getName()));
+            String updateSQL = "update " + table + " set name='?' where id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(updateSQL);
+            statement.setString(1, getName());
+            statement.setInt(2, getId());
+            statement.executeUpdate();
             statement.close();
         } catch (SQLException e) {
             System.err.println(e.getMessage());
@@ -70,9 +84,10 @@ public class Category implements Model {
     @Override
     public void delete() {
         try {
-            Statement statement = DBConnection.getStatment();
-            String deleteSQL = "delete from " + table + " where id=" + id;
-            statement.execute(deleteSQL);
+            String deleteSQL = "delete from " + table + " where id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(deleteSQL);
+            statement.setInt(1, getId());
+            statement.executeUpdate();
             statement.close();
 
             unlinkRecipes();
@@ -86,9 +101,10 @@ public class Category implements Model {
      */
     private void unlinkRecipes() {
         try {
-            Statement statement = DBConnection.getStatment();
-            String deleteSQL = "delete from recipes_categories where category_id=" + id;
-            statement.execute(deleteSQL);
+            String deleteSQL = "delete from recipes_categories where category_id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(deleteSQL);
+            statement.setInt(1, getId());
+            statement.executeUpdate();
             statement.close();
         } catch (SQLException e) {
             System.err.println(e.getMessage());
@@ -102,9 +118,9 @@ public class Category implements Model {
     public static ArrayList<Category> all() {
         ArrayList<Category> categories = new ArrayList<>();
         try {
-            Statement statement = DBConnection.getStatment();
             String getSQL = "select * from " + table;
-            ResultSet resultSet = statement.executeQuery(getSQL);
+            PreparedStatement statement = DBConnection.prepareStatment(getSQL);
+            ResultSet resultSet = statement.executeQuery();
             while (resultSet.next()) {
                 int id = resultSet.getInt("id");
                 String name = resultSet.getString("name");
@@ -126,9 +142,10 @@ public class Category implements Model {
     public static Category find(int id) {
         Category category = null;
         try {
-            Statement statement = DBConnection.getStatment();
-            String getCategorySQL = "select * from " + table + " where id=" + id;
-            ResultSet categoryResult = statement.executeQuery(getCategorySQL);
+            String getCategorySQL = "select * from " + table + " where id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(getCategorySQL);
+            statement.setInt(1, id);
+            ResultSet categoryResult = statement.executeQuery();
             while (categoryResult.next()) {
                 String name = categoryResult.getString("name");
                 category = new Category(id, name);
@@ -146,12 +163,13 @@ public class Category implements Model {
      * @param name category name
      * @return Category or null
      */
-    public static Category findByName(String name) {
+    public static Category find(String name) {
         Category category = null;
         try {
-            Statement statement = DBConnection.getStatment();
-            String getCategorySQL = "select * from " + table + " where name='%s'";
-            ResultSet categoryResult = statement.executeQuery(String.format(getCategorySQL, name));
+            String getCategorySQL = "select * from " + table + " where name=?";
+            PreparedStatement statement = DBConnection.prepareStatment(getCategorySQL);
+            statement.setString(1, name);
+            ResultSet categoryResult = statement.executeQuery();
             while (categoryResult.next()) {
                 int id = categoryResult.getInt("id");
                 category = new Category(id, name);
@@ -166,6 +184,10 @@ public class Category implements Model {
 
     public static boolean exists(int id) {
         return find(id) != null;
+    }
+
+    public static boolean exists(String name) {
+        return find(name) != null;
     }
 
     /**
@@ -184,10 +206,11 @@ public class Category implements Model {
     public static ArrayList<Recipe> getCategoryRecipes(int ...categoryId) {
         ArrayList<Recipe> recipes = new ArrayList<>();
         try {
-            Statement statement = DBConnection.getStatment();
+            String getRecipesIdsSQL = "select recipe_id from recipes_categories where category_id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(getRecipesIdsSQL);
             for (int i : categoryId) {
-                String getRecipesIdsSQL = "select recipe_id from recipes_categories where category_id=" + i;
-                ResultSet recipesIdsResult = statement.executeQuery(getRecipesIdsSQL);
+                statement.setInt(1, i);
+                ResultSet recipesIdsResult = statement.executeQuery();
                 while (recipesIdsResult.next()) {
                     int recipeId = recipesIdsResult.getInt("recipe_id");
                     recipes.add(Recipe.find(recipeId));
@@ -203,14 +226,14 @@ public class Category implements Model {
 
     /**
      * count all categories in database
-     * @return
+     * @return count of categories
      */
     public static int count() {
         int count = 0;
         try {
-            Statement statement = DBConnection.getStatment();
             String countSQL = "select count(id) from " + table;
-            ResultSet resultSet = statement.executeQuery(countSQL);
+            PreparedStatement statement = DBConnection.prepareStatment(countSQL);
+            ResultSet resultSet = statement.executeQuery();
             resultSet.next();
             count = resultSet.getInt(1);
         } catch (SQLException e) {
