@@ -7,32 +7,50 @@ import db.models.Recipe;
 
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
 public abstract class CommandLineInterface {
     private static Scanner scanner = new Scanner(System.in);
+
+    /**
+     * main menu
+     */
     public static void start() {
+        clearScreen();
         DBConnection.connect();
         boolean exit = false;
         while (!exit) {
             printMainMenu();
-            int mainMenuChoice = scanner.nextInt();
-            switch (mainMenuChoice) {
-                case 1 -> { //manage recipes
-                    manageRecipes();
-                }
-                case 2 -> { //manage categories
-                    manageCategories();
-                }
-                case 3 -> { //purge all data
-                    purgeData();
-                }
-                case 4 -> { //exit
-                    System.out.println("Goodby!");
-                    DBConnection.close();
-                    exit = true;
-                }
-                default -> {
-                    System.err.println("please enter an valid value");
+            if (!scanner.hasNextInt()) {
+                clearScreen();
+                String next = scanner.nextLine();
+                System.err.println("<--- please enter an valid value --->");
+            } else {
+                int mainMenuChoice = scanner.nextInt();
+                scanner.nextLine();
+                switch (mainMenuChoice) {
+                    case 1 -> { //manage recipes
+                        clearScreen();
+                        manageRecipes();
+                    }
+                    case 2 -> { //manage categories
+                        clearScreen();
+                        manageCategories();
+                    }
+                    case 3 -> { //purge all data
+                        clearScreen();
+                        purgeData();
+                    }
+                    case 4 -> { //exit
+                        clearScreen();
+                        System.out.println("Goodby!");
+                        DBConnection.close();
+                        exit = true;
+                    }
+                    default -> {
+                        clearScreen();
+                        System.err.println("please enter an valid value");
+                    }
                 }
             }
         }
@@ -51,31 +69,49 @@ public abstract class CommandLineInterface {
         mainMenu.display();
     }
 
+    /**
+     * manage recipes menu
+     */
     private static void manageRecipes() {
         boolean exit = false;
         while (!exit) {
             printManageRecipesMenu();
-            int choice = scanner.nextInt();
-            switch (choice) {
-                case 1 -> { //add recipe
-                    addRecipe();
-                }
-                case 2 -> { //show all recipes
-                    showAllRecipes();
-                }
-                case 3 -> { //search in recipes
-                    // search in recipes
-                }
-                case 4 -> { //back
-                    exit = true;
-                }
-                default -> {
-                    System.err.println("please enter an valid value");
+            if (!scanner.hasNextInt()) {
+                clearScreen();
+                String next = scanner.nextLine();
+                System.err.println("<--- please enter an valid value --->");
+            } else {
+                int choice = scanner.nextInt();
+                scanner.nextLine();
+                switch (choice) {
+                    case 1 -> { //add recipe
+                        clearScreen();
+                        addRecipe();
+                    }
+                    case 2 -> { //show all recipes
+                        clearScreen();
+                        showAllRecipes();
+                    }
+                    case 3 -> { //search in recipes
+                        clearScreen();
+                        // search in recipes
+                    }
+                    case 4 -> { //back
+                        clearScreen();
+                        exit = true;
+                    }
+                    default -> {
+                        clearScreen();
+                        System.err.println("please enter an valid value");
+                    }
                 }
             }
         }
     }
 
+    /**
+     * print manage recipes menu
+     */
     private static void printManageRecipesMenu() {
         Menu manageRecipes = new Menu("<--- Manage Recipes Menu --->");
         manageRecipes.addOption("add recipe");
@@ -85,50 +121,72 @@ public abstract class CommandLineInterface {
         manageRecipes.display();
     }
 
-
+    /**
+     * add recipe menu
+     */
     private static void addRecipe() {
         System.out.println("<--- recipe insertion --->");
-        System.out.println("enter recipe name");
+        System.out.println("enter recipe name :");
         String name = scanner.next();
 
         scanner.nextLine();
 
-        System.out.println("enter recipe instructions");
+        System.out.println("enter recipe instructions :");
         String instructions = scanner.nextLine();
 
-        System.out.println("please enter categories");
-        System.out.println("(use '-' as delimiter)");
+        System.out.println("please enter categories :");
+        System.out.println("(use '-' as seperator)");
         String[] categoriesNames = scanner.nextLine().split("-");
         ArrayList<Category> categories = new ArrayList<>();
         for (String categoryName : categoriesNames) {
-            categories.add(new Category(categoryName));
+            Category newCategory = new Category(categoryName);
+            if (!categories.contains(newCategory))
+                categories.add(newCategory);
         }
 
-        System.out.println("please enter ingredients");
-        System.out.println("(use '-' as delimiter)");
+        System.out.println("please enter ingredients :");
+        System.out.println("(use '-' as seperator)");
         String[] ingredientsNames = scanner.nextLine().split("-");
         ArrayList<Ingredient> ingredients = new ArrayList<>();
         for (String ingredientName : ingredientsNames) {
-            ingredients.add(new Ingredient(ingredientName));
+            Ingredient newIngredient = new Ingredient(ingredientName);
+            if (!ingredients.contains(newIngredient))
+                ingredients.add(newIngredient);
         }
 
         Recipe newRecipe = new Recipe(name, instructions, categories, ingredients);
         newRecipe.save();
+        clearScreen();
     }
 
+    /**
+     * show all recipes menu
+     */
     private static void showAllRecipes() {
         boolean exit = false;
         while (!exit) {
             printShowAllRecipesMenu();
-            int choice = scanner.nextInt();
-
-            if (choice == -1)
-                exit = true;
-            else
-                singelRecipe(choice);
+            if (!scanner.hasNextInt()) {
+                clearScreen();
+                String next = scanner.nextLine();
+                System.err.println("<--- please enter an valid value --->");
+            } else {
+                int choice = scanner.nextInt();
+                scanner.nextLine();
+                if (choice == -1)
+                    exit = true;
+                else {
+                    clearScreen();
+                    singelRecipe(choice);
+                }
+            }
         }
+        clearScreen();
     }
 
+    /**
+     * print show all recipes menu
+     */
     private static void printShowAllRecipesMenu() {
         System.out.println("<--- all recipes menu --->");
         System.out.println("(select from recipes IDs to enter recipe menu or -1 for exit)");
@@ -144,12 +202,17 @@ public abstract class CommandLineInterface {
                     String instructions = recipe.getInstructions();
                     String categories = getRecipeCategoriesText(recipe.getId());
                     String ingredients = getRecipeIngredientsText(recipe.getId());
-                    table.addRow(id,name, instructions, categories, ingredients);
+                    table.addRow(id, name, instructions, categories, ingredients);
                 }
         );
         table.print();
     }
 
+    /**
+     * single recipe menu
+     *
+     * @param recipeId recipe id
+     */
     private static void singelRecipe(int recipeId) {
         if (!Recipe.exists(recipeId)) {// check if recipe exists
             System.err.println("recipe not found :(");
@@ -159,28 +222,194 @@ public abstract class CommandLineInterface {
         boolean exit = false;
         while (!exit) {
             printSingleRecipeMenu(recipe);
-            int choice = scanner.nextInt();
-            switch (choice) {
-                case 1 -> { //edit name
-                    // edit name
-                }
-                case 2 -> { //edit instructions
-                    // edit instructions
-                }
-                case 3 -> { //edit categories
-                    //edit categories
-                }
-                case 4 -> { //edit ingredients
-                    //edit ingredients
-                }
-                case 5 -> {
-                    exit = true;
+            if (!scanner.hasNextInt()) {
+                clearScreen();
+                String next = scanner.nextLine();
+                System.err.println("<--- please enter an valid value --->");
+            } else {
+                int choice = scanner.nextInt();
+                scanner.nextLine();
+                switch (choice) {
+                    case 1 -> { //edit name
+                        clearScreen();
+                        System.out.println("<--- edit " + recipe.getName() + " recipe name --->");
+                        System.out.println("enter new name : ");
+                        String newName = scanner.nextLine();
+                        recipe.setName(newName);
+                        recipe.update();
+                        clearScreen();
+                    }
+                    case 2 -> { //edit instructions
+                        clearScreen();
+                        System.out.println("<--- edit " + recipe.getName() + " recipe instructions --->");
+                        System.out.println("enter new instructions : ");
+                        String newInstructions = scanner.nextLine();
+                        recipe.setInstructions(newInstructions);
+                        recipe.update();
+                        clearScreen();
+                    }
+                    case 3 -> { //edit categories
+                        clearScreen();
+                        boolean exitCategories = false;
+                        while (!exitCategories) {
+                            printEditSingleRecipeCategoriesMenu(recipe);
+                            if (!scanner.hasNextInt()) {
+                                clearScreen();
+                                String next = scanner.nextLine();
+                                System.err.println("<--- please enter an valid value --->");
+                            } else {
+                                int editCategoriesChoice = scanner.nextInt();
+                                scanner.nextLine();
+                                switch (editCategoriesChoice) {
+                                    case 1 -> { //add categories
+                                        clearScreen();
+                                        printEditSingleRecipeCategoriesTable(recipe);
+                                        System.out.println("<--- Add categories to recipe " + recipe.getName() + " --->");
+                                        System.out.println("enter new categories names :");
+                                        System.out.println("(use '-' as seperator )");
+                                        String[] categoriesNames = scanner.nextLine().split("-");
+                                        ArrayList<Category> newCategories = recipe.categories(); // initial value of recipe categories
+
+                                        for (String categoryName : categoriesNames) { //add only unique categories to ArrayList
+                                            Category newCategory = new Category(categoryName);
+                                            newCategories.add(newCategory);
+                                        }
+
+                                        recipe.setCategories(newCategories);
+                                        recipe.update();
+                                        clearScreen();
+                                    }
+                                    case 2 -> { //remove categories
+                                        clearScreen();
+                                        printEditSingleRecipeCategoriesTable(recipe);
+                                        System.out.println("<--- Remove categories from recipe " + recipe.getName() + " --->");
+                                        System.out.println("enter categories you want to remove :");
+                                        System.out.println("(use '-' as seperator )");
+                                        String[] categoriesNames = scanner.nextLine().split("-"); //get categories that user wants to remove
+
+                                        ArrayList<Category> newCategories = recipe.getCategories().stream() //filter categories based on user input
+                                                .filter(
+                                                        (category) -> {
+                                                            boolean found = false;
+                                                            for (String categoryName : categoriesNames) {
+                                                                if (category.getName().equals(categoryName)) {
+                                                                    found = true;
+                                                                    break;
+                                                                }
+                                                            }
+                                                            return !found;
+                                                        }
+                                                )
+                                                .collect(Collectors.toCollection(ArrayList::new));
+
+                                        recipe.setCategories(newCategories); //set new categories
+                                        recipe.update(); //update recipe in database
+                                        clearScreen();
+                                    }
+                                    case 3 -> { //back to recipe menu
+                                        clearScreen();
+                                        exitCategories = true;
+                                    }
+                                    default -> {
+                                        clearScreen();
+                                        System.err.println("please enter an valid value");
+                                    }
+                                }
+                            }
+                        }
+                        clearScreen();
+                    }
+                    case 4 -> { //edit ingredients
+                        clearScreen();
+                        boolean exitIngredients = false;
+                        while (!exitIngredients) {
+                            printEditSingleRecipeIngredientsMenu(recipe);
+                            if (!scanner.hasNextInt()) {
+                                clearScreen();
+                                String next = scanner.nextLine();
+                                System.err.println("<--- please enter an valid value --->");
+                            } else {
+                                int ingredientChoice = scanner.nextInt();
+                                scanner.nextLine();
+                                switch (ingredientChoice) {
+                                    case 1 -> { //add ingredients
+                                        clearScreen();
+                                        printEditSingleRecipeIngredientsTable(recipe);
+                                        System.out.println("<--- Add ingredients to recipe " + recipe.getName() + " --->");
+                                        System.out.println("enter new ingredients names :");
+                                        System.out.println("(use '-' as seperator )");
+                                        String[] ingredientsNames = scanner.nextLine().split("-");
+                                        ArrayList<Ingredient> newIngredients = recipe.ingredients(); // initial value of recipe categories
+
+                                        for (String ingredientName : ingredientsNames) { //add only unique categories to ArrayList
+                                            Ingredient newIngredient = new Ingredient(ingredientName);
+                                            newIngredients.add(newIngredient);
+                                        }
+
+                                        recipe.setIngredients(newIngredients);
+                                        recipe.update();
+                                        clearScreen();
+                                    }
+                                    case 2 -> { //remove ingredinets
+                                        clearScreen();
+                                        printEditSingleRecipeIngredientsTable(recipe);
+                                        System.out.println("<--- Remove ingredients from recipe " + recipe.getName() + " --->");
+                                        System.out.println("enter ingredients you want to remove :");
+                                        System.out.println("(use '-' as seperator )");
+                                        String[] ingredientsNames = scanner.nextLine().split("-"); //get categories that user wants to remove
+
+                                        ArrayList<Ingredient> newIngredients = recipe.getIngredients().stream() //filter categories based on user input
+                                                .filter(
+                                                        (ingredient) -> {
+                                                            boolean found = false;
+                                                            for (String ingredientName : ingredientsNames) {
+                                                                if (ingredient.getName().equals(ingredientName)) {
+                                                                    found = true;
+                                                                    break;
+                                                                }
+                                                            }
+                                                            return !found;
+                                                        }
+                                                )
+                                                .collect(Collectors.toCollection(ArrayList::new));
+
+                                        recipe.setIngredients(newIngredients); //set new categories
+                                        recipe.update(); //update recipe in database
+                                        clearScreen();
+                                    }
+                                    case 3 -> { //back to recipe menu
+                                        clearScreen();
+                                        exitIngredients = true;
+                                    }
+                                    default -> {
+                                        clearScreen();
+                                        System.err.println("please enter an valid value");
+                                    }
+                                }
+                            }
+                        }
+                        clearScreen();
+                    }
+                    case 5 -> { // go back to all recipes menu
+                        clearScreen();
+                        exit = true;
+                    }
+                    default -> {
+                        clearScreen();
+                        System.err.println("please enter an valid value");
+                    }
                 }
             }
         }
+        clearScreen();
     }
 
-    private static void  printSingleRecipeMenu(Recipe recipe) {
+    /**
+     * print menu of edit single recipe
+     *
+     * @param recipe recipe object
+     */
+    private static void printSingleRecipeMenu(Recipe recipe) {
         System.out.println("<--- singel recipe menu --->");
         System.out.println("(select desired action)");
         System.out.println();
@@ -205,25 +434,118 @@ public abstract class CommandLineInterface {
         recipeMenu.display(); //display options
     }
 
+    /**
+     * print menu of edit single recipe categories
+     *
+     * @param recipe recipe object
+     */
+    private static void printEditSingleRecipeCategoriesMenu(Recipe recipe) {
+        printEditSingleRecipeCategoriesTable(recipe);
+
+        Menu editCategoryMenu = new Menu("<--- edit " + recipe.getName() + " recipe categories --->");
+        editCategoryMenu.addOption("add new categories");
+        editCategoryMenu.addOption("remove categories");
+        editCategoryMenu.addOption("back to recipe menu");
+        editCategoryMenu.display();
+    }
+
+    /**
+     * print table of all single recipe categories
+     *
+     * @param recipe recipe object
+     */
+    private static void printEditSingleRecipeCategoriesTable(Recipe recipe) {
+        ArrayList<Category> categories = recipe.categories(); //get recipe all categories
+
+        CommandLineTable table = new CommandLineTable();
+        table.setHeaders("id", "name");
+        table.setShowVerticalLines(true);
+
+        categories.forEach( // add all recipe categories to table
+                (category) -> {
+                    String id = String.valueOf(category.getId());
+                    table.addRow(id, category.getName());
+                }
+        );
+
+        System.out.println("<<<------ Current Categories of " + recipe.getName() + " Recipe ------>>>");
+        table.print();
+    }
+
+    /**
+     * print menu of edit single recipe ingreidnets
+     *
+     * @param recipe recipe object
+     */
+    private static void printEditSingleRecipeIngredientsMenu(Recipe recipe) {
+        printEditSingleRecipeIngredientsTable(recipe);
+
+        Menu editCategoryMenu = new Menu("<--- edit " + recipe.getName() + " recipe ingredients --->");
+        editCategoryMenu.addOption("add new ingredients");
+        editCategoryMenu.addOption("remove ingredients");
+        editCategoryMenu.addOption("back to recipe menu");
+        editCategoryMenu.display();
+    }
+
+    /**
+     * print table of all single recipe ingredients
+     *
+     * @param recipe recipe object
+     */
+    private static void printEditSingleRecipeIngredientsTable(Recipe recipe) {
+        ArrayList<Ingredient> ingredients = recipe.ingredients(); //get recipe all ingredients
+
+        CommandLineTable table = new CommandLineTable();
+        table.setHeaders("id", "name");
+        table.setShowVerticalLines(true);
+
+        ingredients.forEach( // add all recipe ingredients to table
+                (ingredient) -> {
+                    String id = String.valueOf(ingredient.getId());
+                    table.addRow(id, ingredient.getName());
+                }
+        );
+
+        System.out.println("<<<------ Current Ingredients of " + recipe.getName() + " Recipe ------>>>");
+        table.print();
+    }
+
+    /**
+     * manage category menu
+     */
     private static void manageCategories() {
         boolean exit = false;
         while (!exit) {
             printManageCategoriesMenu();
-            int choice = scanner.nextInt();
-            switch (choice) {
-                case 1 -> { // add category
-                    // add category
-                }
-                case 2 -> { // show all categories
-                    //show all categories
-                }
-                case 3 -> { // back
-                    exit = true;
+            if (!scanner.hasNextInt()) {
+                clearScreen();
+                String next = scanner.nextLine();
+                System.err.println("<--- please enter an valid value --->");
+            } else {
+                int choice = scanner.nextInt();
+                scanner.nextLine();
+                switch (choice) {
+                    case 1 -> { // add category
+                        // add category
+                    }
+                    case 2 -> { // show all categories
+                        //show all categories
+                    }
+                    case 3 -> { // back
+                        exit = true;
+                    }
+                    default -> {
+                        clearScreen();
+                        System.err.println("please enter an valid value");
+                    }
                 }
             }
         }
     }
 
+    /**
+     * print manage category menu
+     */
     private static void printManageCategoriesMenu() {
         Menu manageCategories = new Menu("<--- choose desired action --->");
         manageCategories.addOption("add category");
@@ -232,19 +554,40 @@ public abstract class CommandLineInterface {
         manageCategories.display();
     }
 
+    /**
+     * purge data menu
+     */
     private static void purgeData() {
-        printPurgeDataMenu();
-        int choice = scanner.nextInt();
-        switch (choice) {
-            case 1 -> {
-                DBConnection.purgeAllData();
-            }
-            case 2 -> {
-                return;
+        boolean exit = false;
+        while (!exit) {
+            printPurgeDataMenu();
+            if (!scanner.hasNextInt()) {
+                clearScreen();
+                String next = scanner.nextLine();
+                System.err.println("<--- please enter an valid value --->");
+            } else {
+                int choice = scanner.nextInt();
+                scanner.nextLine();
+                switch (choice) {
+                    case 1 -> {
+                        DBConnection.purgeAllData();
+                    }
+                    case 2 -> {
+                        exit = true;
+                    }
+                    default -> {
+                        clearScreen();
+                        System.err.println("please enter an valid value");
+                    }
+                }
+                clearScreen();
             }
         }
     }
 
+    /**
+     * print purge data menu
+     */
     private static void printPurgeDataMenu() {
         Menu purgeData = new Menu("this delete all data stored in database are you sure ?");
         purgeData.addOption("yes");
@@ -254,6 +597,7 @@ public abstract class CommandLineInterface {
 
     /**
      * get recipe all categories in string format
+     *
      * @param recipeId recipe id
      * @return string of all categories of recipe
      */
@@ -272,6 +616,13 @@ public abstract class CommandLineInterface {
 
         return builder.toString();
     }
+
+    /**
+     * get recipe all ingredients in string format
+     *
+     * @param recipeId recipe id
+     * @return string of all ingredients of recipe
+     */
     private static String getRecipeIngredientsText(int recipeId) {
         StringBuilder builder = new StringBuilder();
 
@@ -286,5 +637,20 @@ public abstract class CommandLineInterface {
         );
 
         return builder.toString();
+    }
+
+    /**
+     * clear command line screen
+     */
+    private static void clearScreen() {
+        try {
+            if (System.getProperty("os.name").contains("Windows")) {
+                new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
+            } else {
+                Runtime.getRuntime().exec("clear");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

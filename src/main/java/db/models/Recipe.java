@@ -186,7 +186,7 @@ public class Recipe implements Model {
     @Override
     public void update() {
         try {
-            String updateSQL = "update " + table + "set name=?, instructions=? where id=?";
+            String updateSQL = "UPDATE " + table + " SET name = ?, instructions = ? where id = ?";
             PreparedStatement statement = DBConnection.prepareStatment(updateSQL);
             statement.setString(1, getName());
             statement.setString(2, getInstructions());
@@ -228,8 +228,8 @@ public class Recipe implements Model {
                 .filter((category) -> !categories.contains(category))
                 .collect(Collectors.toCollection(ArrayList::new)); // get categories that removed from recipe and most unlink
 
-        ArrayList<Category> addedCategories = categories().stream()
-                .filter((category -> categories.contains(category)))
+        ArrayList<Category> addedCategories = categories.stream()
+                .filter((category -> !categories().contains(category)))
                 .collect(Collectors.toCollection(ArrayList::new)); // get categories that added to recipe and most link
 
         unlinkCategories(removedCategories); // unlink removed categories
@@ -293,7 +293,7 @@ public class Recipe implements Model {
      */
     private void unlinkCategories(ArrayList<Category> categories) {
         try {
-            String unlinkCategorySQL = "delete from recipe_categories where recipe_id=? and category_id=?";
+            String unlinkCategorySQL = "delete from recipes_categories where recipe_id=? and category_id=?";
             PreparedStatement statement = DBConnection.prepareStatment(unlinkCategorySQL);
             statement.setInt(1, getId());
             for (Category category : categories) {
@@ -332,8 +332,8 @@ public class Recipe implements Model {
                 .filter((ingredient -> !ingredients.contains(ingredient)))
                 .collect(Collectors.toCollection(ArrayList::new)); // get ingredients that removed from recipe and most unlink
 
-        ArrayList<Ingredient> addedIngredients = ingredients().stream()
-                .filter((ingredient -> ingredients.contains(ingredient)))
+        ArrayList<Ingredient> addedIngredients = ingredients.stream()
+                .filter((ingredient -> !ingredients().contains(ingredient)))
                 .collect(Collectors.toCollection(ArrayList::new));
 
         unlinkIngredients(removedIngredients); // unlink removed ingredients
@@ -397,7 +397,7 @@ public class Recipe implements Model {
      */
     private void unlinkIngredients(ArrayList<Ingredient> ingredients) {
         try {
-            String unlinkCategorySQL = "delete from recipe_ingredients where recipe_id=? and ingredient_id=?";
+            String unlinkCategorySQL = "delete from recipes_ingredients where recipe_id=? and ingredient_id=?";
             PreparedStatement statement = DBConnection.prepareStatment(unlinkCategorySQL);
             statement.setInt(1, getId());
             for (Ingredient ingredient : ingredients) {
@@ -415,7 +415,7 @@ public class Recipe implements Model {
      */
     private void unlinkIngredients() {
         try {
-            String unlinkCategorySQL = "delete from recipe_ingredients where recipe_id=? and ingredient_id=?";
+            String unlinkCategorySQL = "delete from recipes_ingredients where recipe_id=? and ingredient_id=?";
             PreparedStatement statement = DBConnection.prepareStatment(unlinkCategorySQL);
             statement.setInt(1, getId());
             for (Ingredient ingredient : ingredients) {

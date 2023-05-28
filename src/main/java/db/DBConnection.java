@@ -14,7 +14,6 @@ public abstract class DBConnection {
         try {
             connection = DriverManager.getConnection(dbPath);
             createTablesIfNotExist();
-            System.out.println("suc");
         } catch (SQLException e) {
             System.err.println(e.getMessage());
         }
