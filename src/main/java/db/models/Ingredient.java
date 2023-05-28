@@ -181,7 +181,9 @@ public class Ingredient implements Model {
                 ResultSet recipesIdsResult = statement.executeQuery();
                 while (recipesIdsResult.next()) {
                     int recipeId = recipesIdsResult.getInt("recipe_id");
-                    recipes.add(Recipe.find(recipeId));
+                    Recipe recipe = Recipe.find(recipeId);
+                    if (!recipes.contains(recipe))
+                        recipes.add(Recipe.find(recipeId));
                 }
                 recipesIdsResult.close();
             }

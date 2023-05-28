@@ -94,7 +94,7 @@ public abstract class CommandLineInterface {
                     }
                     case 3 -> { //search in recipes
                         clearScreen();
-                        // search in recipes
+                        searchRecipes();
                     }
                     case 4 -> { //back
                         clearScreen();
@@ -127,9 +127,7 @@ public abstract class CommandLineInterface {
     private static void addRecipe() {
         System.out.println("<--- recipe insertion --->");
         System.out.println("enter recipe name :");
-        String name = scanner.next();
-
-        scanner.nextLine();
+        String name = scanner.nextLine();
 
         System.out.println("enter recipe instructions :");
         String instructions = scanner.nextLine();
@@ -140,8 +138,7 @@ public abstract class CommandLineInterface {
         ArrayList<Category> categories = new ArrayList<>();
         for (String categoryName : categoriesNames) {
             Category newCategory = new Category(categoryName);
-            if (!categories.contains(newCategory))
-                categories.add(newCategory);
+            categories.add(newCategory);
         }
 
         System.out.println("please enter ingredients :");
@@ -150,8 +147,7 @@ public abstract class CommandLineInterface {
         ArrayList<Ingredient> ingredients = new ArrayList<>();
         for (String ingredientName : ingredientsNames) {
             Ingredient newIngredient = new Ingredient(ingredientName);
-            if (!ingredients.contains(newIngredient))
-                ingredients.add(newIngredient);
+            ingredients.add(newIngredient);
         }
 
         Recipe newRecipe = new Recipe(name, instructions, categories, ingredients);
@@ -507,6 +503,139 @@ public abstract class CommandLineInterface {
         );
 
         System.out.println("<<<------ Current Ingredients of " + recipe.getName() + " Recipe ------>>>");
+        table.print();
+    }
+
+    /**
+     * search in recipes menu
+     */
+    private static void searchRecipes() {
+        boolean exit = false;
+        while (!exit) {
+            printSearchRecipesMenu();
+            if (!scanner.hasNextInt()) {
+                clearScreen();
+                String next = scanner.nextLine();
+                System.err.println("<--- please enter an valid value --->");
+            } else {
+                int choice = scanner.nextInt();
+                scanner.nextLine();
+                switch (choice) {
+                    case 1 -> { //search with categories
+                        clearScreen();
+                        System.out.println("<--- search recipes with category --->");
+                        System.out.println("enter categories names :");
+                        System.out.println("( use '-' as seperator )");
+                        String[] categoriesNames = scanner.nextLine().split("-"); //get categories names from user
+                        int[] categoriesIds = new int[categoriesNames.length];
+
+                        for (int i = 0; i < categoriesIds.length; i++) { // add id of entered category names
+                            if (Category.exists(categoriesNames[i]))
+                                categoriesIds[i] = Category.find(categoriesNames[i]).getId();
+                        }
+                        clearScreen();
+                        ArrayList<Recipe> foundedRecipes = Category.getCategoryRecipes(categoriesIds); // search in recipes with category ids
+
+                        boolean exitCategory = false;
+                        while (!exitCategory) {
+                            System.out.println("<--- founded recipes --->");
+                            System.out.println("(select recipe or enter -1 to exit)");
+                            printSearchRecipesTable(foundedRecipes);
+                            if (!scanner.hasNextInt()) {
+                                clearScreen();
+                                String next = scanner.nextLine();
+                                System.err.println("<--- please enter an valid value --->");
+                            } else {
+                                int categoryChoice = scanner.nextInt();
+                                scanner.nextLine();
+                                if (categoryChoice == -1)
+                                    exitCategory = true;
+                                else {
+                                    clearScreen();
+                                    singelRecipe(categoryChoice);
+                                }
+                            }
+                        }
+                        clearScreen();
+                    }
+                    case 2 -> { //search with ingredients
+                        clearScreen();
+                        System.out.println("<--- search recipes with ingredient --->");
+                        System.out.println("enter ingredients names :");
+                        System.out.println("( use '-' as seperator )");
+                        String[] ingredientsNames = scanner.nextLine().split("-"); //get categories names from user
+                        int[] ingredientsId = new int[ingredientsNames.length];
+
+                        for (int i = 0; i < ingredientsId.length; i++) { // add id of entered category names
+                            if (Ingredient.exists(ingredientsNames[i]))
+                                ingredientsId[i] = Ingredient.find(ingredientsNames[i]).getId();
+                        }
+                        clearScreen();
+                        ArrayList<Recipe> foundedRecipes = Ingredient.getIngredientRecipes(ingredientsId); // search in recipes with category ids
+
+                        boolean exitIngredient = false;
+                        while (!exitIngredient) {
+                            System.out.println("<--- founded recipes --->");
+                            System.out.println("(select recipe or enter -1 to exit)");
+                            printSearchRecipesTable(foundedRecipes);
+                            if (!scanner.hasNextInt()) {
+                                clearScreen();
+                                String next = scanner.nextLine();
+                                System.err.println("<--- please enter an valid value --->");
+                            } else {
+                                int categoryChoice = scanner.nextInt();
+                                scanner.nextLine();
+                                if (categoryChoice == -1)
+                                    exitIngredient = true;
+                                else {
+                                    clearScreen();
+                                    singelRecipe(categoryChoice);
+                                }
+                            }
+                        }
+                        clearScreen();
+                    }
+                    case 3 -> {
+                        clearScreen();
+                        exit = true;
+                    }
+                    default -> {
+                        clearScreen();
+                        System.err.println("please enter an valid value");
+                    }
+                }
+            }
+        }
+        clearScreen();
+    }
+
+    /**
+     * print search recipes menu
+     */
+    private static void printSearchRecipesMenu() {
+        Menu menu = new Menu("<--- search in recipes --->");
+        menu.addOption("search with categories");
+        menu.addOption("search with ingredients");
+        menu.addOption("back to manage recipes");
+        menu.display();
+    }
+
+    private static void printSearchRecipesTable(ArrayList<Recipe> recipes) {
+        CommandLineTable table = new CommandLineTable();
+        table.setHeaders("id", "name", "instructions", "categories", "ingredients");
+        table.setShowVerticalLines(true);
+
+        recipes.forEach(
+                (recipe) -> {
+                    String id = String.valueOf(recipe.getId());
+                    String name = recipe.getName();
+                    String instructions = recipe.getInstructions();
+                    String categories = getRecipeCategoriesText(recipe.getId());
+                    String ingredients = getRecipeIngredientsText(recipe.getId());
+                    table.addRow(id, name, instructions, categories, ingredients);
+                }
+        );
+
         table.print();
     }
 
