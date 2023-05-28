@@ -756,6 +756,7 @@ public abstract class CommandLineInterface {
                 scanner.nextLine();
                 switch (choice) {
                     case 1 -> { //edit category name
+                        clearScreen();
                         System.out.println("<--- edit category name --->");
                         System.out.println("enter new name :");
                         String name = scanner.nextLine();
@@ -769,6 +770,7 @@ public abstract class CommandLineInterface {
                         clearScreen();
                     }
                     case 2 -> { //show category all recipes
+                        clearScreen();
                         boolean exitCategory = false;
                         while (!exitCategory) {
                             printShowCategoryRecipesMenu(category);
