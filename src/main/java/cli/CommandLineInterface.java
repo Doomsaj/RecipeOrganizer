@@ -655,12 +655,43 @@ public abstract class CommandLineInterface {
                 scanner.nextLine();
                 switch (choice) {
                     case 1 -> { // add category
-                        // add category
+                        clearScreen();
+                        System.out.println("<--- create new category --->");
+                        System.out.println("enter category name :");
+                        String name = scanner.nextLine();
+                        if (Category.exists(name)) {
+                            System.err.println("category with name " + name + " is already exists");
+                            clearScreen();
+                        } else {
+                            Category category = new Category(name);
+                            category.save();
+                            clearScreen();
+                        }
                     }
                     case 2 -> { // show all categories
-                        //show all categories
+                        clearScreen();
+                        boolean allExit = false;
+                        while (!allExit) {
+                            printShowAllCategoriesMenu();
+                            if (!scanner.hasNextInt()) {
+                                clearScreen();
+                                String next = scanner.nextLine();
+                                System.err.println("<--- please enter an valid value --->");
+                            } else {
+                                int allChoice = scanner.nextInt();
+                                scanner.nextLine();
+                                if (allChoice == -1)
+                                    allExit = true;
+                                else {
+                                    clearScreen();
+                                    singleCategory(allChoice);
+                                }
+                            }
+                        }
+                        clearScreen();
                     }
                     case 3 -> { // back
+                        clearScreen();
                         exit = true;
                     }
                     default -> {
@@ -684,12 +715,38 @@ public abstract class CommandLineInterface {
     }
 
     /**
-     * purge data menu
+     * print show all categories menu
      */
-    private static void purgeData() {
+    private static void printShowAllCategoriesMenu() {
+        System.out.println("<--- all categories menu --->");
+        System.out.println("(select from categories IDs to enter category menu or -1 for exit)");
+        CommandLineTable table = new CommandLineTable();
+        table.setHeaders("id", "name", "count of recipes");
+        table.setShowVerticalLines(true);
+
+        ArrayList<Category> categories = Category.all();
+
+        categories.forEach(
+                category -> {
+                    String id = String.valueOf(category.getId());
+                    String name = category.getName();
+                    String countOfRecipes = String.valueOf(category.recipesCount());
+                    table.addRow(id, name, countOfRecipes);
+                }
+        );
+
+        table.print();
+    }
+
+    private static void singleCategory(int categoryId) {
+        if (!Category.exists(categoryId)) {
+            System.err.println("category not found");
+            return;
+        }
+        Category category = Category.find(categoryId);
         boolean exit = false;
         while (!exit) {
-            printPurgeDataMenu();
+            printSingleCategoryMenu(category);
             if (!scanner.hasNextInt()) {
                 clearScreen();
                 String next = scanner.nextLine();
@@ -698,18 +755,99 @@ public abstract class CommandLineInterface {
                 int choice = scanner.nextInt();
                 scanner.nextLine();
                 switch (choice) {
-                    case 1 -> {
-                        DBConnection.purgeAllData();
+                    case 1 -> { //edit category name
+                        System.out.println("<--- edit category name --->");
+                        System.out.println("enter new name :");
+                        String name = scanner.nextLine();
+                        if (Category.exists(name)) { //check if category with this name is exists
+                            clearScreen();
+                            System.err.println("sorry a category with this name is already exist");
+                            return;
+                        }
+                        category.setName(name);
+                        category.update();
+                        clearScreen();
                     }
-                    case 2 -> {
+                    case 2 -> { //show category all recipes
+                        boolean exitCategory = false;
+                        while (!exitCategory) {
+                            printShowCategoryRecipesMenu(category);
+                            if (!scanner.hasNextInt()) {
+                                clearScreen();
+                                String next = scanner.nextLine();
+                                System.err.println("<--- please enter an valid value --->");
+                            } else {
+                                int categoryRecipe = scanner.nextInt();
+                                scanner.nextLine();
+                                if (categoryRecipe == -1)
+                                    exitCategory = true;
+                                else {
+                                    clearScreen();
+                                    singelRecipe(choice);
+                                }
+                            }
+                        }
+                        clearScreen();
+                    }
+                    case 3 -> {
+                        clearScreen();
                         exit = true;
                     }
-                    default -> {
-                        clearScreen();
-                        System.err.println("please enter an valid value");
-                    }
                 }
+            }
+        }
+        clearScreen();
+    }
+
+    private static void printSingleCategoryMenu(Category category) {
+        Menu menu = new Menu("<--- edit menu for " + category.getName() + " category --->");
+        menu.addOption("edit name");
+        menu.addOption("show all recipes");
+        menu.addOption("exit");
+        menu.display();
+    }
+
+    private static void printShowCategoryRecipesMenu(Category category) {
+        System.out.println("<--- recipes that have " + category.getName() + " category --->");
+        System.out.println("(select from recipes IDs to enter recipe menu or -1 for exit)");
+        System.out.println();
+        CommandLineTable table = new CommandLineTable();
+        table.setHeaders("id", "name", "instructions", "categories", "ingredients");
+        table.setShowVerticalLines(true);
+
+        ArrayList<Recipe> recipes = category.recipes();
+        recipes.forEach(
+                (recipe) -> {
+                    String id = String.valueOf(recipe.getId());
+                    String name = recipe.getName();
+                    String instructions = recipe.getInstructions();
+                    String categories = getRecipeCategoriesText(recipe.getId());
+                    String ingredients = getRecipeIngredientsText(recipe.getId());
+                    table.addRow(id, name, instructions, categories, ingredients);
+                }
+        );
+        table.print();
+    }
+
+    /**
+     * purge data menu
+     */
+    private static void purgeData() {
+        printPurgeDataMenu();
+        int choice = scanner.nextInt();
+        scanner.nextLine();
+        switch (choice) {
+            case 1 -> {
+                DBConnection.purgeAllData();
                 clearScreen();
+            }
+            case 2 -> {
+                clearScreen();
+                return;
+            }
+            default -> {
+                clearScreen();
+                System.err.println("please enter an valid value");
             }
         }
     }

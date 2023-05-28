@@ -244,6 +244,34 @@ public class Category implements Model {
         return count;
     }
 
+    /**
+     * count of recipes that have this category
+     * @return count of recipes
+     */
+    public int recipesCount() {
+        return countCategoryRecipes(id);
+    }
+
+    /**
+     * count of recipes that have given category
+     * @param categoryId category id
+     * @return count of recipes
+     */
+    public static int countCategoryRecipes(int categoryId) {
+        int count = 0;
+        try {
+            String countSQL = "select count(recipe_id) from recipes_categories where category_id=?";
+            PreparedStatement statement = DBConnection.prepareStatment(countSQL);
+            statement.setInt(1, categoryId);
+            ResultSet resultSet = statement.executeQuery();
+            resultSet.next();
+            count = resultSet.getInt(1);
+        } catch (SQLException e) {
+            System.err.println(e.getMessage());
+        }
+        return count;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
