@@ -67,7 +67,7 @@ public class Category implements Model {
     @Override
     public void update() {
         try {
-            String updateSQL = "update " + table + " set name='?' where id=?";
+            String updateSQL = "update " + table + " set name=? where id=?";
             PreparedStatement statement = DBConnection.prepareStatment(updateSQL);
             statement.setString(1, getName());
             statement.setInt(2, getId());

@@ -837,7 +837,6 @@ public abstract class CommandLineInterface {
     private static void purgeData() {
         printPurgeDataMenu();
         int choice = scanner.nextInt();
-        scanner.nextLine();
         switch (choice) {
             case 1 -> {
                 DBConnection.purgeAllData();
